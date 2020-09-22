@@ -5,6 +5,8 @@
 #include <caml/bigarray.h>
 #include <caml/custom.h>
 
+#define PRIM extern "C" CAMLprim
+
 using namespace simdjson;
 
 void dom_parser_finalize (value x) {
@@ -45,7 +47,7 @@ static struct custom_operations dom_object_ops = {
   custom_fixed_length_default
 };
 
-CAMLprim value createParser_stubs (value unit) {
+PRIM value createParser_stubs (value unit) {
     CAMLparam1 (unit);
     dom::parser *p = new dom::parser;
     value x = caml_alloc_custom(&dom_parser_ops, sizeof (dom::parser *), 0, 1);
@@ -53,7 +55,7 @@ CAMLprim value createParser_stubs (value unit) {
     CAMLreturn(x);
 }
 
-CAMLprim value loadBuf_stubs (value parser, value buf) {
+PRIM value loadBuf_stubs (value parser, value buf) {
     CAMLparam2 (parser, buf);
     dom::parser *p = (dom::parser *) Data_custom_val(parser);
     dom::element e = p->parse((const uint8_t*) Caml_ba_data_val(buf),
@@ -64,7 +66,7 @@ CAMLprim value loadBuf_stubs (value parser, value buf) {
     CAMLreturn (x);
 }
 
-CAMLprim value getObject_stubs (value parser, value elt) {
+PRIM value getObject_stubs (value parser, value elt) {
     CAMLparam2(parser, elt);
     dom::parser *p = (dom::parser *) Data_custom_val(parser);
     dom::element *e = (dom::element *) Data_custom_val(elt);

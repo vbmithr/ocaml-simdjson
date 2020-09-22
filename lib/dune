@@ -5,5 +5,5 @@
  (foreign_stubs
   (language cxx)
   (names mlsimdjson))
- (c_library_flags -lsimdjson))
+ (c_library_flags -lstdc++ -lsimdjson))
 
