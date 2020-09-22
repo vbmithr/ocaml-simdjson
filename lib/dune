@@ -1,0 +1,9 @@
+(library
+ (name            simdjson)
+ (public_name     simdjson)
+ (libraries       bigstringaf)
+ (foreign_stubs
+  (language cxx)
+  (names mlsimdjson))
+ (c_library_flags -lsimdjson))
+
