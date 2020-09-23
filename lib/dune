@@ -1,7 +1,7 @@
 (library
  (name            simdjson)
  (public_name     simdjson)
- (libraries       bigstringaf)
+ (libraries       bigstringaf ocplib-json-typed)
  (foreign_stubs
   (language cxx)
   (names mlsimdjson))
