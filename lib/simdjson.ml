@@ -7,12 +7,18 @@ type arrayIter
 
 external createParser : unit -> jsonparser = "createParser_stubs"
 external loadBuf : jsonparser -> Bigstringaf.t -> value = "loadBuf_stubs"
-external getObject : value -> obj = "getObject_stubs"
-external getArray : value -> array = "getArray_stubs"
+external createObject : unit -> obj = "createObject_stubs"
+external createArray : unit -> array = "createObject_stubs"
+external getObject : obj -> value -> unit = "getObject_stubs"
+external getArray : array -> value -> unit = "getArray_stubs"
 
 (* *)
 external arraySize : array -> int = "arraySize_stubs" [@@noalloc]
-external arrayIterator : array -> arrayIter = "arrayIterator_stubs"
+external createArrayIterator : unit -> arrayIter = "createArrayIterator_stubs"
+
+external arrayIterator : arrayIter -> array -> unit = "arrayIterator_stubs"
+  [@@noalloc]
+
 external arrayIteratorGet : arrayIter -> value = "arrayIteratorGet_stubs"
 
 external arrayIteratorNext : arrayIter -> unit = "arrayIteratorNext_stubs"
@@ -20,7 +26,8 @@ external arrayIteratorNext : arrayIter -> unit = "arrayIteratorNext_stubs"
 
 (* *)
 external objSize : obj -> int = "objSize_stubs" [@@noalloc]
-external objIterator : obj -> objIter = "objIterator_stubs"
+external createObjectIterator : unit -> objIter = "createObjectIterator_stubs"
+external objIterator : objIter -> obj -> unit = "objIterator_stubs" [@@noalloc]
 external objIteratorGet : objIter -> string * value = "objIteratorGet_stubs"
 external objIteratorNext : objIter -> unit = "objIteratorNext_stubs" [@@noalloc]
 
@@ -33,27 +40,31 @@ external getDouble : value -> float = "getDouble_stubs"
 external getString : value -> string = "getString_stubs"
 
 let view elt =
+  let aiter = createArrayIterator () in
+  let oiter = createObjectIterator () in
+  let arr = createArray () in
+  let obj = createObject () in
   match elementType elt with
   | '[' ->
-      let a = getArray elt in
-      let len = arraySize a in
-      let iter = arrayIterator a in
+      getArray arr elt ;
+      let len = arraySize arr in
+      arrayIterator aiter arr ;
       let rec loop acc len =
         if len < 0 then List.rev acc
         else
-          let e = arrayIteratorGet iter in
-          arrayIteratorNext iter ;
+          let e = arrayIteratorGet aiter in
+          arrayIteratorNext aiter ;
           loop (e :: acc) (pred len) in
       `A (loop [] (pred len))
   | '{' ->
-      let o = getObject elt in
-      let len = objSize o in
-      let iter = objIterator o in
+      getObject obj elt ;
+      let len = objSize obj in
+      objIterator oiter obj ;
       let rec loop acc len =
         if len < 0 then List.rev acc
         else
-          let k, v = objIteratorGet iter in
-          objIteratorNext iter ;
+          let k, v = objIteratorGet oiter in
+          objIteratorNext oiter ;
           loop ((k, v) :: acc) (pred len) in
       `O (loop [] (pred len))
   | 'l' -> `Float (Int64.to_float (getInt64 elt))

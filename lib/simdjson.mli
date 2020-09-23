@@ -13,18 +13,22 @@ val repr_uid : value Json_repr.repr_uid
 
 (**/*)
 
-val getObject : value -> obj
-val getArray : value -> array
+val createObject : unit -> obj
+val createArray : unit -> array
+val createArrayIterator : unit -> arrayIter
+val createObjectIterator : unit -> objIter
+val getObject : obj -> value -> unit
+val getArray : array -> value -> unit
 
 (* *)
 val arraySize : array -> int
-val arrayIterator : array -> arrayIter
+val arrayIterator : arrayIter -> array -> unit
 val arrayIteratorGet : arrayIter -> value
 val arrayIteratorNext : arrayIter -> unit
 
 (* *)
 val objSize : obj -> int
-val objIterator : obj -> objIter
+val objIterator : objIter -> obj -> unit
 val objIteratorGet : objIter -> string * value
 val objIteratorNext : objIter -> unit
 

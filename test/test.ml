@@ -33,13 +33,16 @@ let obj () =
   check (float 0.1) "f" 3.23 fl
 
 let array () =
+  let open Simdjson in
   let json = {|[0,1,2]|} in
   let subs = subs json in
   let elt = Simdjson.loadBuf p subs in
-  let a = Simdjson.getArray elt in
+  let a = createArray () in
+  Simdjson.getArray a elt ;
   let len = Simdjson.arraySize a in
   check int "arraySize" 3 len ;
-  let iter = Simdjson.arrayIterator a in
+  let iter = createArrayIterator () in
+  Simdjson.arrayIterator iter a ;
   for i = 0 to len - 1 do
     let e = Simdjson.arrayIteratorGet iter in
     Simdjson.arrayIteratorNext iter ;
@@ -48,13 +51,16 @@ let array () =
   ()
 
 let strArray () =
+  let open Simdjson in
   let json = {|["0","1","2"]|} in
   let subs = subs json in
   let elt = Simdjson.loadBuf p subs in
-  let a = Simdjson.getArray elt in
+  let a = createArray () in
+  Simdjson.getArray a elt ;
   let len = Simdjson.arraySize a in
   check int "arraySize" 3 len ;
-  let iter = Simdjson.arrayIterator a in
+  let iter = createArrayIterator () in
+  Simdjson.arrayIterator iter a ;
   for i = 0 to 2 do
     let e = Simdjson.arrayIteratorGet iter in
     Simdjson.arrayIteratorNext iter ;

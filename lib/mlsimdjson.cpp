@@ -149,23 +149,35 @@ extern "C" value objSize_stubs (value obj) {
     return Val_int(o->size());
 }
 
-PRIM value arrayIterator_stubs (value arr) {
-    CAMLparam1(arr);
+PRIM value createArrayIterator_stubs(value unit) {
+    CAMLparam1(unit);
     CAMLlocal1(x);
-    dom::array *a = Array_val(arr);
-    dom::array::iterator *i = new dom::array::iterator(a->begin());
+    dom::array::iterator *i = new dom::array::iterator();
     x = caml_alloc_custom(&dom_array_iterator_ops, sizeof (dom::array::iterator *), 0, 1);
     Array_iterator_val(x) = i;
     CAMLreturn (x);
 }
-PRIM value objIterator_stubs (value obj) {
-    CAMLparam1(obj);
+
+PRIM value createObjectIterator_stubs(value unit) {
+    CAMLparam1(unit);
     CAMLlocal1(x);
-    dom::object *o = Obj_val(obj);
-    dom::object::iterator *i = new dom::object::iterator(o->begin());
-    x = caml_alloc_custom(&dom_object_iterator_ops, sizeof (dom::object::iterator *), 0, 1);
+    dom::object::iterator *i = new dom::object::iterator();
+    x = caml_alloc_custom(&dom_array_iterator_ops, sizeof (dom::object::iterator *), 0, 1);
     Obj_iterator_val(x) = i;
     CAMLreturn (x);
+}
+
+PRIM value arrayIterator_stubs (value iter, value arr) {
+    dom::array *a = Array_val(arr);
+    dom::array::iterator *i = Array_iterator_val(iter);
+    *i = a->begin();
+    return Val_unit;
+}
+PRIM value objIterator_stubs (value iter, value obj) {
+    dom::object *o = Obj_val(obj);
+    dom::object::iterator *i = Obj_iterator_val(iter);
+    *i = o->begin();
+    return Val_unit;
 }
 
 PRIM value arrayIteratorGet_stubs (value iter) {
@@ -238,32 +250,44 @@ PRIM value getString_stubs(value elt) {
     CAMLreturn(x);
 }
 
-PRIM value getArray_stubs (value elt) {
-    CAMLparam1(elt);
+PRIM value createArray_stubs (value unit) {
+    CAMLparam1(unit);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
     dom::array *a = new dom::array;
+    x = caml_alloc_custom(&dom_array_ops, sizeof (dom::array *), 0, 1);
+    Array_val(x) = a;
+    CAMLreturn(x);
+}
+
+PRIM value createObject_stubs (value unit) {
+    CAMLparam1(unit);
+    CAMLlocal1(x);
+    dom::object *o = new dom::object;
+    x = caml_alloc_custom(&dom_object_ops, sizeof (dom::object *), 0, 1);
+    Obj_val(x) = o;
+    CAMLreturn(x);
+}
+
+PRIM value getArray_stubs (value arr, value elt) {
+    CAMLparam2(arr, elt);
+    dom::element *e = Element_val(elt);
+    dom::array *a = Array_val(arr);
     auto error = e->get(*a);
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_array_ops, sizeof (dom::array *), 0, 1);
-    Array_val(x) = a;
-    CAMLreturn (x);
+    return Val_unit;
 }
 
-PRIM value getObject_stubs (value elt) {
-    CAMLparam1(elt);
-    CAMLlocal1(x);
+PRIM value getObject_stubs (value obj, value elt) {
+    CAMLparam2(obj, elt);
     dom::element *e = Element_val(elt);
-    dom::object *obj = new dom::object;
-    auto error = e->get(*obj);
+    dom::object *o = Obj_val (obj);
+    auto error = e->get(*o);
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_object_ops, sizeof (dom::object *), 0, 1);
-    Obj_val(x) = obj;
-    CAMLreturn (x);
+    return Val_unit;
 }
 
 extern "C" value elementType_stubs (value elt) {
