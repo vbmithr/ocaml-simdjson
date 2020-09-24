@@ -5,4 +5,5 @@
  (libraries
    core
    async
-   simdjson))
+   simdjson
+   yojson))

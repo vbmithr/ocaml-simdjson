@@ -1,7 +1,37 @@
 open Core
 open Async
 
-module Simdjson = struct
+module Json = struct
+  let of_buf bi_outbuf buffer w buf pos len =
+    let msg = Bigstring.To_string.sub buf ~pos ~len in
+    let rec loop pos len =
+      if len <= 0 then Deferred.unit
+      else
+        match String.index_from msg pos '\n' with
+        | None ->
+            Buffer.add_substring buffer msg ~pos ~len ;
+            Pipe.pushback w
+        | Some idx ->
+            let msgLen = idx - pos in
+            Buffer.add_substring buffer msg ~pos ~len:msgLen ;
+            let contents = Buffer.contents buffer in
+            Buffer.clear buffer ;
+            let json = Yojson.Safe.from_string ~buf:bi_outbuf contents in
+            Pipe.write_without_pushback w json ;
+            loop (pos + msgLen + 1) (len - msgLen - 1) in
+    loop 0 len
+
+  let of_reader ?(bi_outbuf = Bi_outbuf.create 4096)
+      ?(buffer = Buffer.create 4096) r =
+    Pipe.create_reader ~close_on_exception:false (fun w ->
+        Reader.read_one_chunk_at_a_time r ~handle_chunk:(fun buf ~pos ~len ->
+            of_buf bi_outbuf buffer w buf pos len >>| fun () -> `Continue)
+        >>= function
+        | `Eof -> Deferred.unit
+        | `Eof_with_unconsumed_data _ | `Stopped _ -> assert false)
+end
+
+module JsonFast = struct
   module Simdjson_encoding = Json_encoding.Make (Simdjson)
 
   let padding =
@@ -37,16 +67,38 @@ module Simdjson = struct
         >>= function
         | `Eof -> Deferred.unit
         | `Eof_with_unconsumed_data _ | `Stopped _ -> assert false)
+
+  let of_file ?(parser = Simdjson.createParser ()) fn =
+    let d = Simdjson.loadMany parser fn in
+    let seq = Simdjson.seq_of_docStream d in
+    Pipe.create_reader ~close_on_exception:false (fun w ->
+        Seq.iter (Pipe.write_without_pushback_if_open w) seq ;
+        Deferred.unit)
 end
 
-let main r =
-  let x = Simdjson.of_reader r in
+let simdjson fn =
+  let x = JsonFast.of_file fn in
   Pipe.drain x
 
-let () =
+let yojson r =
+  let x = Json.of_reader r in
+  Pipe.drain x
+
+let simdjson =
   Command.async ~summary:"Parse ndjson file"
     (let open Command.Let_syntax in
     [%map_open
       let fn = anon ("fn" %: string) in
-      fun () -> Reader.with_file fn ~f:main])
+      fun () -> simdjson fn])
+
+let yojson =
+  Command.async ~summary:"Parse ndjson file"
+    (let open Command.Let_syntax in
+    [%map_open
+      let fn = anon ("fn" %: string) in
+      fun () -> Reader.with_file fn ~f:yojson])
+
+let () =
+  Command.group ~summary:"json bench"
+    [("yojson", yojson); ("simdjson", simdjson)]
   |> Command.run

@@ -62,8 +62,29 @@ let strArray () =
   done ;
   ()
 
+let parseMany () =
+  let open Simdjson in
+  let json = {|["0","1","2"]["0","1","2"]|} in
+  let subs = subs json in
+  let ds = Simdjson.parseMany p subs in
+  let iter = docStreamIteratorBegin ds in
+  let on_elt elt =
+    let a = Simdjson.getArray elt in
+    let len = Simdjson.arraySize a in
+    check int "arraySize" 3 len ;
+    let iter = Simdjson.arrayIterator a in
+    for i = 0 to 2 do
+      let e = Simdjson.arrayIteratorGet iter in
+      Simdjson.arrayIteratorNext iter ;
+      check string "iteratorGet" (string_of_int i) (Simdjson.getString e)
+    done in
+  for _ = 0 to 1 do
+    let x = docStreamIteratorGet iter in
+    on_elt x ; docStreamIteratorNext iter
+  done
+
 let basic =
   [ ("obj0", `Quick, obj0); ("obj", `Quick, obj); ("array", `Quick, array);
-    ("strArray", `Quick, strArray) ]
+    ("strArray", `Quick, strArray); ("parseMany", `Quick, parseMany) ]
 
 let () = run "simdjson" [("basic", basic)]

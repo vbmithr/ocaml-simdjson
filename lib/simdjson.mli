@@ -1,5 +1,7 @@
 type jsonparser
 type value
+type docStream
+type docStreamIter
 type obj
 type objIter
 type array
@@ -7,11 +9,22 @@ type arrayIter
 
 val createParser : unit -> jsonparser
 val loadBuf : jsonparser -> Bigstringaf.t -> value
+val parseMany : jsonparser -> Bigstringaf.t -> docStream
+val loadMany : jsonparser -> string -> docStream
 val view : value -> value Json_repr.view
 val repr : value Json_repr.view -> value
 val repr_uid : value Json_repr.repr_uid
 
 (**/*)
+
+val docStreamIteratorBegin : docStream -> docStreamIter
+val docStreamIteratorEnd : docStream -> docStreamIter
+val docStreamIteratorCompare : docStreamIter -> docStreamIter -> bool
+val docStreamIteratorGet : docStreamIter -> value
+val docStreamIteratorNext : docStreamIter -> unit
+val seq_of_docStream : docStream -> value Seq.t
+
+(* *)
 
 val getObject : value -> obj
 val getArray : value -> array

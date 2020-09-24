@@ -4,11 +4,49 @@ type obj
 type objIter
 type array
 type arrayIter
+type docStream
+type docStreamIter
 
+external elementType : value -> char = "elementType_stubs" [@@noalloc]
 external createParser : unit -> jsonparser = "createParser_stubs"
 external loadBuf : jsonparser -> Bigstringaf.t -> value = "loadBuf_stubs"
 external getObject : value -> obj = "getObject_stubs"
 external getArray : value -> array = "getArray_stubs"
+external loadMany : jsonparser -> string -> docStream = "loadMany_stubs"
+
+external parseMany : jsonparser -> Bigstringaf.t -> docStream
+  = "parseMany_stubs"
+
+(* *)
+external docStreamIteratorBegin : docStream -> docStreamIter
+  = "docStreamIteratorBegin_stubs"
+
+external docStreamIteratorEnd : docStream -> docStreamIter
+  = "docStreamIteratorEnd_stubs"
+
+external docStreamIteratorCompare : docStreamIter -> docStreamIter -> bool
+  = "docStreamIteratorCompare_stubs"
+  [@@noalloc]
+
+external docStreamIteratorGet : docStreamIter -> value
+  = "docStreamIteratorGet_stubs"
+
+external docStreamIteratorNext : docStreamIter -> unit
+  = "docStreamIteratorNext_stubs"
+  [@@noalloc]
+
+let seq_of_docStream d =
+  let iter_end = docStreamIteratorEnd d in
+  let iter = docStreamIteratorBegin d in
+  let rec loop () =
+    match docStreamIteratorCompare iter iter_end with
+    | false -> Seq.Nil
+    | true ->
+        let x = docStreamIteratorGet iter in
+        (* Printf.printf "%c%!" (elementType x) ; *)
+        docStreamIteratorNext iter ;
+        Seq.Cons (x, loop) in
+  loop
 
 (* *)
 external arraySize : array -> int = "arraySize_stubs" [@@noalloc]
@@ -25,7 +63,6 @@ external objIteratorGet : objIter -> string * value = "objIteratorGet_stubs"
 external objIteratorNext : objIter -> unit = "objIteratorNext_stubs" [@@noalloc]
 
 (* *)
-external elementType : value -> char = "elementType_stubs" [@@noalloc]
 external getInt : value -> int = "getInt_stubs" [@@noalloc]
 external getBool : value -> bool = "getBool_stubs" [@@noalloc]
 external getInt64 : value -> int64 = "getInt64_stubs"
