@@ -67,7 +67,6 @@ let parseMany () =
   let json = {|["0","1","2"]["0","1","2"]|} in
   let subs = subs json in
   let ds = Simdjson.parseMany p subs in
-  let iter = docStreamIteratorBegin ds in
   let on_elt elt =
     let a = Simdjson.getArray elt in
     let len = Simdjson.arraySize a in
@@ -78,10 +77,7 @@ let parseMany () =
       Simdjson.arrayIteratorNext iter ;
       check string "iteratorGet" (string_of_int i) (Simdjson.getString e)
     done in
-  for _ = 0 to 1 do
-    let x = docStreamIteratorGet iter in
-    on_elt x ; docStreamIteratorNext iter
-  done
+  Seq.iter on_elt (seq_of_docStream ds)
 
 let basic =
   [ ("obj0", `Quick, obj0); ("obj", `Quick, obj); ("array", `Quick, array);
