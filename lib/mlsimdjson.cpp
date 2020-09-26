@@ -9,7 +9,6 @@
 
 #define PRIM extern "C" CAMLprim
 
-using namespace std;
 using namespace simdjson;
 
 #define Parser_val(v) (*((dom::parser **) Data_custom_val(v)))
@@ -22,42 +21,42 @@ using namespace simdjson;
 #define Doc_stream_iter_val(v) (*((dom::document_stream::iterator **) Data_custom_val(v)))
 
 void dom_parser_finalize (value x) {
-    dom::parser *p = Parser_val(x);
+    auto *p = Parser_val(x);
     delete p;
 }
 
 void dom_element_finalize (value x) {
-    dom::element *e = Element_val(x);
+    auto *e = Element_val(x);
     delete e;
 }
 
 void dom_object_finalize (value x) {
-    dom::object *o = Obj_val(x);
+    auto *o = Obj_val(x);
     delete o;
 }
 
 void dom_array_finalize (value x) {
-    dom::array *a = Array_val(x);
+    auto *a = Array_val(x);
     delete a;
 }
 
 void dom_object_iterator_finalize (value x) {
-    dom::object::iterator *i = Obj_iterator_val(x);
+    auto *i = Obj_iterator_val(x);
     delete i;
 }
 
 void dom_array_iterator_finalize (value x) {
-    dom::array::iterator *i = Array_iterator_val(x);
+    auto *i = Array_iterator_val(x);
     delete i;
 }
 
 void dom_document_stream_finalize (value x) {
-    dom::document_stream *s = Doc_stream_val(x);
+    auto *s = Doc_stream_val(x);
     delete s;
 }
 
 void dom_document_stream_iter_finalize (value x) {
-    dom::document_stream::iterator *i = Doc_stream_iter_val(x);
+    auto *i = Doc_stream_iter_val(x);
     delete i;
 }
 
@@ -152,75 +151,89 @@ static struct custom_operations dom_document_stream_iter_ops = {
 PRIM value createParser_stubs (value unit) {
     CAMLparam1 (unit);
     CAMLlocal1(x);
-    dom::parser *p = new dom::parser;
-    x = caml_alloc_custom(&dom_parser_ops, sizeof (dom::parser *), 0, 1);
+    auto *p = new dom::parser;
+    x = caml_alloc_custom_mem(&dom_parser_ops,
+                              sizeof (dom::parser *),
+                              sizeof (dom::parser));
     Parser_val(x) = p;
     CAMLreturn(x);
 }
 
-PRIM value loadBuf_stubs (value parser, value buf) {
+PRIM value parse_stubs (value parser, value buf) {
     CAMLparam2 (parser, buf);
     CAMLlocal1(x);
-    dom::element *e = new dom::element;
-    dom::parser *p = Parser_val(parser);
+    auto *e = new dom::element;
+    auto *p = Parser_val(parser);
     auto error = p->parse((const uint8_t*) Caml_ba_data_val(buf),
                           Caml_ba_array_val(buf)->dim[0]-SIMDJSON_PADDING,
                           false).get(*e);
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_element_ops, sizeof (dom::element *), 0, 1);
+    x = caml_alloc_custom_mem(&dom_element_ops,
+                              sizeof (dom::element *),
+                              p->capacity());
     Element_val(x) = e;
     CAMLreturn (x);
 }
 
-PRIM value loadMany_stubs (value parser, value fn) {
-    CAMLparam2(parser, fn);
+PRIM value loadMany_stubs (value parser, value fn, value batchSize) {
+    CAMLparam3(parser, fn, batchSize);
     CAMLlocal1(x);
-    dom::parser *p = Parser_val(parser);
-    dom::document_stream *d = new dom::document_stream;
-    auto error = p->load_many(String_val(fn)).get(*d);
+    auto *p = Parser_val(parser);
+    auto *d = new dom::document_stream;
+    caml_release_runtime_system();
+    auto error = p->load_many(String_val(fn), Long_val(batchSize)).get(*d);
+    caml_acquire_runtime_system();
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_document_stream_ops, sizeof (dom::document_stream *), 0, 1);
+    x = caml_alloc_custom_mem(&dom_document_stream_ops,
+                              sizeof (dom::document_stream *),
+                              Long_val(batchSize));
     Doc_stream_val(x) = d;
     CAMLreturn (x);
 }
 
-PRIM value parseMany_stubs (value parser, value buf) {
-    CAMLparam2(parser, buf);
+PRIM value parseMany_stubs (value parser, value buf, value batchSize) {
+    CAMLparam3(parser, buf, batchSize);
     CAMLlocal1(x);
-    dom::parser *p = Parser_val(parser);
-    dom::document_stream *d = new dom::document_stream;
-    // caml_release_runtime_system();
+    auto *p = Parser_val(parser);
+    auto *d = new dom::document_stream;
+    caml_release_runtime_system();
     auto error = p->parse_many((const uint8_t*) Caml_ba_data_val(buf),
-                               Caml_ba_array_val(buf)->dim[0]-SIMDJSON_PADDING).get(*d);
-    // caml_acquire_runtime_system();
+                               Caml_ba_array_val(buf)->dim[0]-SIMDJSON_PADDING,
+                               Long_val(batchSize)
+                               ).get(*d);
+    caml_acquire_runtime_system();
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_document_stream_ops, sizeof (dom::document_stream *), 0, 1);
+    x = caml_alloc_custom_mem(&dom_document_stream_ops,
+                              sizeof (dom::document_stream *),
+                              Long_val(batchSize));
     Doc_stream_val(x) = d;
     CAMLreturn (x);
 }
 
 extern "C" value arraySize_stubs (value arr) {
-    dom::array *a = Array_val(arr);
+    auto *a = Array_val(arr);
     return Val_int(a->size());
 }
 
 extern "C" value objSize_stubs (value obj) {
-    dom::object *o = Obj_val(obj);
+    auto *o = Obj_val(obj);
     return Val_int(o->size());
 }
 
 PRIM value arrayIterator_stubs (value arr) {
     CAMLparam1(arr);
     CAMLlocal1(x);
-    dom::array *a = Array_val(arr);
-    dom::array::iterator *i = new dom::array::iterator(a->begin());
-    x = caml_alloc_custom(&dom_array_iterator_ops, sizeof (dom::array::iterator *), 0, 1);
+    auto *a = Array_val(arr);
+    auto *i = new dom::array::iterator(a->begin());
+    x = caml_alloc_custom_mem(&dom_array_iterator_ops,
+                              sizeof (dom::array::iterator *),
+                              sizeof(dom::array::iterator));
     Array_iterator_val(x) = i;
     CAMLreturn (x);
 }
@@ -228,9 +241,11 @@ PRIM value arrayIterator_stubs (value arr) {
 PRIM value objIterator_stubs (value obj) {
     CAMLparam1(obj);
     CAMLlocal1(x);
-    dom::object *o = Obj_val(obj);
-    dom::object::iterator *i = new dom::object::iterator(o->begin());
-    x = caml_alloc_custom(&dom_object_iterator_ops, sizeof (dom::object::iterator *), 0, 1);
+    auto *o = Obj_val(obj);
+    auto *i = new dom::object::iterator(o->begin());
+    x = caml_alloc_custom_mem(&dom_object_iterator_ops,
+                              sizeof (dom::object::iterator *),
+                              sizeof (dom::object::iterator));
     Obj_iterator_val(x) = i;
     CAMLreturn (x);
 }
@@ -238,10 +253,11 @@ PRIM value objIterator_stubs (value obj) {
 PRIM value docStreamIteratorBegin_stubs (value ds) {
     CAMLparam1(ds);
     CAMLlocal1(x);
-    dom::document_stream *d = Doc_stream_val(ds);
-    dom::document_stream::iterator *i = new dom::document_stream::iterator(d->begin());
-    x = caml_alloc_custom(&dom_document_stream_iter_ops,
-                          sizeof (dom::document_stream::iterator *), 0, 1);
+    auto *d = Doc_stream_val(ds);
+    auto *i = new dom::document_stream::iterator(d->begin());
+    x = caml_alloc_custom_mem(&dom_document_stream_iter_ops,
+                              sizeof (dom::document_stream::iterator *),
+                              sizeof (dom::document_stream::iterator));
     Doc_stream_iter_val(x) = i;
     CAMLreturn (x);
 }
@@ -249,25 +265,28 @@ PRIM value docStreamIteratorBegin_stubs (value ds) {
 PRIM value docStreamIteratorEnd_stubs (value ds) {
     CAMLparam1(ds);
     CAMLlocal1(x);
-    dom::document_stream *d = Doc_stream_val(ds);
-    dom::document_stream::iterator *i = new dom::document_stream::iterator(d->end());
-    x = caml_alloc_custom(&dom_document_stream_iter_ops,
-                          sizeof (dom::document_stream::iterator *), 0, 1);
+    auto *d = Doc_stream_val(ds);
+    auto *i = new dom::document_stream::iterator(d->end());
+    x = caml_alloc_custom_mem(&dom_document_stream_iter_ops,
+                              sizeof (dom::document_stream::iterator *),
+                              sizeof (dom::document_stream::iterator));
     Doc_stream_iter_val(x) = i;
     CAMLreturn (x);
 }
 
 extern "C" value docStreamIteratorCompare_stubs (value x, value y) {
-    dom::document_stream::iterator *a = Doc_stream_iter_val(x), *b = Doc_stream_iter_val(y);
+    auto *a = Doc_stream_iter_val(x), *b = Doc_stream_iter_val(y);
     return Val_bool(*a != *b);
 }
 
 PRIM value docStreamIteratorGet_stubs (value iter) {
     CAMLparam1(iter);
     CAMLlocal1(x);
-    dom::document_stream::iterator *i = Doc_stream_iter_val(iter);
-    dom::element *e = new dom::element(*(*i));
-    x = caml_alloc_custom(&dom_element_ops, sizeof (dom::element *), 0, 1);
+    auto *i = Doc_stream_iter_val(iter);
+    auto *e = new dom::element(*(*i));
+    x = caml_alloc_custom_mem(&dom_element_ops,
+                              sizeof (dom::element *),
+                              sizeof (dom::element));
     Element_val(x) = e;
     CAMLreturn(x);
 }
@@ -275,9 +294,11 @@ PRIM value docStreamIteratorGet_stubs (value iter) {
 PRIM value arrayIteratorGet_stubs (value iter) {
     CAMLparam1(iter);
     CAMLlocal1(x);
-    dom::array::iterator *i = Array_iterator_val(iter);
-    dom::element *e = new dom::element(*(*i));
-    x = caml_alloc_custom(&dom_element_ops, sizeof (dom::element *), 0, 1);
+    auto *i = Array_iterator_val(iter);
+    auto *e = new dom::element(*(*i));
+    x = caml_alloc_custom_mem(&dom_element_ops,
+                              sizeof (dom::element *),
+                              sizeof (dom::element));
     Element_val(x) = e;
     CAMLreturn(x);
 }
@@ -285,10 +306,12 @@ PRIM value arrayIteratorGet_stubs (value iter) {
 PRIM value objIteratorGet_stubs (value iter) {
     CAMLparam1(iter);
     CAMLlocal3(block, k, v);
-    dom::object::iterator *i = Obj_iterator_val(iter);
+    auto *i = Obj_iterator_val(iter);
     k = caml_copy_string(i->key_c_str());
-    dom::element *e = new dom::element(i->value());
-    v = caml_alloc_custom(&dom_element_ops, sizeof (dom::element *), 0, 1);
+    auto *e = new dom::element(i->value());
+    v = caml_alloc_custom_mem(&dom_element_ops,
+                              sizeof (dom::element *),
+                              sizeof (dom::element));
     Element_val(v) = e;
     block = caml_alloc_tuple(2);
     Store_field(block,0,k);
@@ -297,38 +320,39 @@ PRIM value objIteratorGet_stubs (value iter) {
 }
 
 extern "C" value arrayIteratorNext_stubs(value iter) {
-    dom::array::iterator *i = Array_iterator_val(iter);
+    auto *i = Array_iterator_val(iter);
     ++(*i);
     return Val_unit;
 }
 
 extern "C" value objIteratorNext_stubs(value iter) {
-    dom::object::iterator *i = Obj_iterator_val(iter);
+    auto *i = Obj_iterator_val(iter);
     ++(*i);
     return Val_unit;
 }
 
 extern "C" value docStreamIteratorNext_stubs(value iter) {
-    CAMLparam1(iter);
-    dom::document_stream::iterator *i = Doc_stream_iter_val(iter);
+    auto *i = Doc_stream_iter_val(iter);
+    caml_release_runtime_system();
     ++(*i);
-    CAMLreturn(Val_unit);
+    caml_acquire_runtime_system();
+    return Val_unit;
 }
 
 extern "C" value getInt_stubs(value elt) {
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     return Val_long(int64_t(*e));
 }
 
 extern "C" value getBool_stubs(value elt) {
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     return Val_bool(bool(*e));
 }
 
 PRIM value getInt64_stubs(value elt) {
     CAMLparam1(elt);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     x = caml_copy_int64(int64_t(*e));
     CAMLreturn(x);
 }
@@ -336,7 +360,7 @@ PRIM value getInt64_stubs(value elt) {
 PRIM value getDouble_stubs(value elt) {
     CAMLparam1(elt);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     x = caml_copy_double(double(*e));
     CAMLreturn(x);
 }
@@ -344,7 +368,7 @@ PRIM value getDouble_stubs(value elt) {
 PRIM value getString_stubs(value elt) {
     CAMLparam1(elt);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     x = caml_copy_string(e->get_c_str());
     CAMLreturn(x);
 }
@@ -352,13 +376,15 @@ PRIM value getString_stubs(value elt) {
 PRIM value getArray_stubs (value elt) {
     CAMLparam1(elt);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
-    dom::array *a = new dom::array;
+    auto *e = Element_val(elt);
+    auto *a = new dom::array;
     auto error = e->get(*a);
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_array_ops, sizeof (dom::array *), 0, 1);
+    x = caml_alloc_custom_mem(&dom_array_ops,
+                              sizeof (dom::array *),
+                              sizeof (dom::object));
     Array_val(x) = a;
     CAMLreturn (x);
 }
@@ -366,18 +392,20 @@ PRIM value getArray_stubs (value elt) {
 PRIM value getObject_stubs (value elt) {
     CAMLparam1(elt);
     CAMLlocal1(x);
-    dom::element *e = Element_val(elt);
-    dom::object *obj = new dom::object;
+    auto *e = Element_val(elt);
+    auto *obj = new dom::object;
     auto error = e->get(*obj);
     if (error) {
         caml_invalid_argument(error_message(error));
     }
-    x = caml_alloc_custom(&dom_object_ops, sizeof (dom::object *), 0, 1);
+    x = caml_alloc_custom_mem(&dom_object_ops,
+                              sizeof (dom::object *),
+                              sizeof (dom::object));
     Obj_val(x) = obj;
     CAMLreturn (x);
 }
 
 extern "C" value elementType_stubs (value elt) {
-    dom::element *e = Element_val(elt);
+    auto *e = Element_val(elt);
     return Val_int(e->type());
 }

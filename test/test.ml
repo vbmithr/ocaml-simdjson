@@ -19,68 +19,34 @@ let obj0 () =
   let open Simdjson in
   let json = {|[]|} in
   let subs = subs json in
-  let elt = loadBuf p subs in
+  let elt = parse p subs in
   let _ = view elt in
-  ()
+  Gc.compact () ; ()
 
 let obj () =
   let encoding = Json_encoding.(obj2 (req "object" bool) (req "machin" float)) in
   let json = {|{"object": true, "machin": 3.23}|} in
   let subs = subs json in
-  let elt = Simdjson.loadBuf p subs in
+  let elt = Simdjson.parse p subs in
   let b, fl = destruct_safe encoding elt in
+  Gc.compact () ;
   check bool "b" true b ;
   check (float 0.1) "f" 3.23 fl
-
-let array () =
-  let json = {|[0,1,2]|} in
-  let subs = subs json in
-  let elt = Simdjson.loadBuf p subs in
-  let a = Simdjson.getArray elt in
-  let len = Simdjson.arraySize a in
-  check int "arraySize" 3 len ;
-  let iter = Simdjson.arrayIterator a in
-  for i = 0 to len - 1 do
-    let e = Simdjson.arrayIteratorGet iter in
-    Simdjson.arrayIteratorNext iter ;
-    check int "iteratorGet" i (Simdjson.getInt e)
-  done ;
-  ()
-
-let strArray () =
-  let json = {|["0","1","2"]|} in
-  let subs = subs json in
-  let elt = Simdjson.loadBuf p subs in
-  let a = Simdjson.getArray elt in
-  let len = Simdjson.arraySize a in
-  check int "arraySize" 3 len ;
-  let iter = Simdjson.arrayIterator a in
-  for i = 0 to 2 do
-    let e = Simdjson.arrayIteratorGet iter in
-    Simdjson.arrayIteratorNext iter ;
-    check string "iteratorGet" (string_of_int i) (Simdjson.getString e)
-  done ;
-  ()
 
 let parseMany () =
   let open Simdjson in
   let json = {|["0","1","2"]["0","1","2"]|} in
   let subs = subs json in
   let ds = Simdjson.parseMany p subs in
-  let on_elt elt =
-    let a = Simdjson.getArray elt in
-    let len = Simdjson.arraySize a in
-    check int "arraySize" 3 len ;
-    let iter = Simdjson.arrayIterator a in
-    for i = 0 to 2 do
-      let e = Simdjson.arrayIteratorGet iter in
-      Simdjson.arrayIteratorNext iter ;
-      check string "iteratorGet" (string_of_int i) (Simdjson.getString e)
-    done in
-  Seq.iter on_elt (seq_of_docStream ds)
+  let enc = Json_encoding.(array string) in
+  let on_elt acc x =
+    Gc.compact () ;
+    Simdjson_encoding.destruct enc x :: acc in
+  let _ = Seq.fold_left on_elt [] (seqOfDocStream ds) in
+  ()
 
 let basic =
-  [ ("obj0", `Quick, obj0); ("obj", `Quick, obj); ("array", `Quick, array);
-    ("strArray", `Quick, strArray); ("parseMany", `Quick, parseMany) ]
+  [ ("obj0", `Quick, obj0); ("obj", `Quick, obj);
+    ("parseMany", `Quick, parseMany) ]
 
 let () = run "simdjson" [("basic", basic)]

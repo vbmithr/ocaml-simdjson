@@ -1,2 +1,3 @@
 profile = compact
 break-separators = after
+doc-comments = after-when-possible

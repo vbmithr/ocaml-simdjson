@@ -53,7 +53,7 @@ module JsonFast = struct
               (Bigstring.sub_shared buf ~pos ~len:msgLen) ;
             Bigbuffer.add_bigstring buffer padding ;
             let contents = Bigbuffer.big_contents buffer in
-            let json = Simdjson.loadBuf parser contents in
+            let json = Simdjson.parse parser contents in
             Bigbuffer.clear buffer ;
             Pipe.write_without_pushback w json ;
             loop (pos + msgLen + 1) (len - msgLen - 1) in
@@ -70,7 +70,7 @@ module JsonFast = struct
 
   let of_file ?(parser = Simdjson.createParser ()) fn =
     let d = Simdjson.loadMany parser fn in
-    let seq = Simdjson.seq_of_docStream d in
+    let seq = Simdjson.seqOfDocStream d in
     Pipe.create_reader ~close_on_exception:false (fun w ->
         Seq.iter (Pipe.write_without_pushback_if_open w) seq ;
         Deferred.unit)
