@@ -159,14 +159,55 @@ PRIM value createParser_stubs (value unit) {
     CAMLreturn(x);
 }
 
-PRIM value parse_stubs (value parser, value buf) {
-    CAMLparam2 (parser, buf);
+PRIM value parse_stubs (value parser, value buf, value len) {
+    CAMLparam3 (parser, buf, len);
     CAMLlocal1(x);
     auto *e = new dom::element;
     auto *p = Parser_val(parser);
+    // caml_release_runtime_system();
     auto error = p->parse((const uint8_t*) Caml_ba_data_val(buf),
-                          Caml_ba_array_val(buf)->dim[0]-SIMDJSON_PADDING,
-                          false).get(*e);
+                          Long_val(len),false).get(*e);
+    // caml_acquire_runtime_system();
+    if (error) {
+        caml_invalid_argument(error_message(error));
+    }
+    x = caml_alloc_custom_mem(&dom_element_ops,
+                              sizeof (dom::element *),
+                              p->capacity());
+    Element_val(x) = e;
+    CAMLreturn (x);
+}
+
+
+PRIM value parseMany_stubs (value parser, value buf, value len, value batchSize) {
+    CAMLparam4(parser, buf, len, batchSize);
+    CAMLlocal1(x);
+    auto *p = Parser_val(parser);
+    auto *d = new dom::document_stream;
+    // caml_release_runtime_system();
+    auto error = p->parse_many((const uint8_t*) Caml_ba_data_val(buf),
+                               Long_val(len),
+                               Long_val(batchSize)
+                               ).get(*d);
+    // caml_acquire_runtime_system();
+    if (error) {
+        caml_invalid_argument(error_message(error));
+    }
+    x = caml_alloc_custom_mem(&dom_document_stream_ops,
+                              sizeof (dom::document_stream *),
+                              Long_val(batchSize));
+    Doc_stream_val(x) = d;
+    CAMLreturn (x);
+}
+
+PRIM value load_stubs (value parser, value fn) {
+    CAMLparam2 (parser, fn);
+    CAMLlocal1(x);
+    auto *e = new dom::element;
+    auto *p = Parser_val(parser);
+    // caml_release_runtime_system();
+    auto error = p->load(String_val(fn)).get(*e);
+    // caml_acquire_runtime_system();
     if (error) {
         caml_invalid_argument(error_message(error));
     }
@@ -182,9 +223,9 @@ PRIM value loadMany_stubs (value parser, value fn, value batchSize) {
     CAMLlocal1(x);
     auto *p = Parser_val(parser);
     auto *d = new dom::document_stream;
-    caml_release_runtime_system();
+    // caml_release_runtime_system();
     auto error = p->load_many(String_val(fn), Long_val(batchSize)).get(*d);
-    caml_acquire_runtime_system();
+    // caml_acquire_runtime_system();
     if (error) {
         caml_invalid_argument(error_message(error));
     }
@@ -195,26 +236,6 @@ PRIM value loadMany_stubs (value parser, value fn, value batchSize) {
     CAMLreturn (x);
 }
 
-PRIM value parseMany_stubs (value parser, value buf, value batchSize) {
-    CAMLparam3(parser, buf, batchSize);
-    CAMLlocal1(x);
-    auto *p = Parser_val(parser);
-    auto *d = new dom::document_stream;
-    caml_release_runtime_system();
-    auto error = p->parse_many((const uint8_t*) Caml_ba_data_val(buf),
-                               Caml_ba_array_val(buf)->dim[0]-SIMDJSON_PADDING,
-                               Long_val(batchSize)
-                               ).get(*d);
-    caml_acquire_runtime_system();
-    if (error) {
-        caml_invalid_argument(error_message(error));
-    }
-    x = caml_alloc_custom_mem(&dom_document_stream_ops,
-                              sizeof (dom::document_stream *),
-                              Long_val(batchSize));
-    Doc_stream_val(x) = d;
-    CAMLreturn (x);
-}
 
 extern "C" value arraySize_stubs (value arr) {
     auto *a = Array_val(arr);
@@ -283,7 +304,10 @@ PRIM value docStreamIteratorGet_stubs (value iter) {
     CAMLparam1(iter);
     CAMLlocal1(x);
     auto *i = Doc_stream_iter_val(iter);
-    auto *e = new dom::element(*(*i));
+    dom::element *e = new dom::element;
+    auto error = (*(*i)).get(*e);
+    if (error)
+        caml_invalid_argument(error_message(error));
     x = caml_alloc_custom_mem(&dom_element_ops,
                               sizeof (dom::element *),
                               sizeof (dom::element));
@@ -333,9 +357,9 @@ extern "C" value objIteratorNext_stubs(value iter) {
 
 extern "C" value docStreamIteratorNext_stubs(value iter) {
     auto *i = Doc_stream_iter_val(iter);
-    caml_release_runtime_system();
+    // caml_release_runtime_system();
     ++(*i);
-    caml_acquire_runtime_system();
+    // caml_acquire_runtime_system();
     return Val_unit;
 }
 

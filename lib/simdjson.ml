@@ -18,9 +18,10 @@ type value = elt
 
 external elementType : e -> char = "elementType_stubs" [@@noalloc]
 external createParser : unit -> p = "createParser_stubs"
-external parse : p -> Bigstringaf.t -> e = "parse_stubs"
+external parse : p -> Bigstringaf.t -> int -> e = "parse_stubs"
+external parseMany : p -> Bigstringaf.t -> int -> int -> ds = "parseMany_stubs"
+external load : p -> string -> e = "load_stubs"
 external loadMany : p -> string -> int -> ds = "loadMany_stubs"
-external parseMany : p -> Bigstringaf.t -> int -> ds = "parseMany_stubs"
 
 (* *)
 (* external getInt : e -> int = "getInt_stubs" [@@noalloc] *)
@@ -60,12 +61,29 @@ let createParser () =
   let p = createParser () in
   {p; buf= None}
 
-let parse p buf = {p; e= parse p.p buf}
+let padding = Bigstringaf.create 32
 let defaultBatchSize = 1000000
 
-let parseMany ?(batchSize = defaultBatchSize) p buf =
+let parse ?len p buf =
+  let maxLen = Bigstringaf.(length buf - length padding) in
+  let len =
+    match len with
+    | None -> maxLen
+    | Some l when l > maxLen -> invalid_arg "parse: len"
+    | Some l -> l in
+  {p; e= parse p.p buf len}
+
+let parseMany ?len ?(batchSize = defaultBatchSize) p buf =
+  let maxLen = Bigstringaf.(length buf - length padding) in
+  let len =
+    match len with
+    | None -> maxLen
+    | Some l when l > maxLen -> invalid_arg "parse: len"
+    | Some l -> l in
   p.buf <- Some buf ;
-  {p; ds= parseMany p.p buf batchSize}
+  {p; ds= parseMany p.p buf len batchSize}
+
+let load p fn = {p; e= load p.p fn}
 
 let loadMany ?(batchSize = defaultBatchSize) p fn =
   {p; ds= loadMany p.p fn batchSize}

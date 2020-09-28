@@ -35,15 +35,21 @@ let obj () =
 
 let parseMany () =
   let open Simdjson in
-  let json = {|["0","1","2"]["0","1","2"]|} in
-  let subs = subs json in
-  let ds = Simdjson.parseMany p subs in
-  let enc = Json_encoding.(array string) in
-  let on_elt acc x =
-    Gc.compact () ;
-    Simdjson_encoding.destruct enc x :: acc in
-  let _ = Seq.fold_left on_elt [] (seqOfDocStream ds) in
-  ()
+  let a = {|["0","1","2"]["0","1","2"]|} in
+  let b = {|["0","1","2"]["0","1","2"]|} in
+  let c = {|["0","1","2"]    ["0","1","2"]  |} in
+  let d = "[\"0\"]\n[\"0\"]" in
+  let e = "[\"0\"]\r\n[\"0\"]" in
+  let loop json =
+    let subs = subs json in
+    let ds = Simdjson.parseMany p subs in
+    let enc = Json_encoding.(array string) in
+    let on_elt acc x =
+      Gc.compact () ;
+      Simdjson_encoding.destruct enc x :: acc in
+    let _ = Seq.fold_left on_elt [] (seqOfDocStream ds) in
+    () in
+  List.iter loop [a; b; c; d; e]
 
 let basic =
   [ ("obj0", `Quick, obj0); ("obj", `Quick, obj);
